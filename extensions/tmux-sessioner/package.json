@@ -18,30 +18,50 @@
   "commands": [
     {
       "name": "index",
-      "title": "Manage Tmux Session",
-      "description": "Manage Tmux Session that user can switch or delete any tmux session from here",
-      "mode": "view"
-    },
-    {
-      "name": "choose_terminal_app",
-      "title": "Change Default Terminal",
-      "description": "Change Default Terminal so that it can be opened with the correct app",
-      "mode": "view"
-    },
-    {
-      "name": "create_new_session",
-      "title": "Create New Session",
-      "description": "Create New Tmux Session",
-      "mode": "view"
-    },
-    {
-      "name": "manage_tmux_windows",
-      "title": "Manage Tmux Windows",
-      "description": "Manage Tmux Windows that user can switch or delete any tmux window from here",
+      "title": "Manage Tmux",
+      "description": "Browse tmux sessions, windows, and create sessions from one command",
       "mode": "view"
     }
   ],
   "preferences": [
+    {
+      "name": "terminalAppBundleId",
+      "title": "Terminal Application",
+      "description": "Select which terminal app to use when opening tmux sessions",
+      "type": "dropdown",
+      "required": false,
+      "default": "com.apple.Terminal",
+      "data": [
+        {
+          "title": "Terminal",
+          "value": "com.apple.Terminal"
+        },
+        {
+          "title": "iTerm",
+          "value": "com.googlecode.iterm2"
+        },
+        {
+          "title": "Ghostty",
+          "value": "com.mitchellh.ghostty"
+        },
+        {
+          "title": "Warp",
+          "value": "dev.warp.Warp-Stable"
+        },
+        {
+          "title": "WezTerm",
+          "value": "com.github.wez.wezterm"
+        },
+        {
+          "title": "Alacritty",
+          "value": "org.alacritty"
+        },
+        {
+          "title": "kitty",
+          "value": "net.kovidgoyal.kitty"
+        }
+      ]
+    },
     {
       "name": "defaultDirectory",
       "description": "Default directory for new tmux session",

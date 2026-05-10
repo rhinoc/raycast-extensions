@@ -6,10 +6,8 @@ This is a extension for raycast to manage tmux sessions.
 
 ## Features
 
-- Switch between sessions 🔄
-- Switch between windows 🔄
-- Attach to sessions/windows automatically with setup terminal 🖥
-- Attach to sessions automatically with setup terminal 🖥
+- Browse sessions and drill into windows 🔄
+- Open sessions and windows in your configured terminal 🖥
 - Create new sessions 🆕
 - Delete sessions 🗑
 - Rename sessions 📝
@@ -19,12 +17,11 @@ This is a extension for raycast to manage tmux sessions.
 1. Install [Raycast](https://raycast.com/) 📦
 2. Install [Tmux](https://linuxize.com/post/getting-started-with-tmux/) 📦
 3. Install [Extension](https://www.raycast.com/raycast) 📦
-4. Open Raycast and type `Tmux Sessioner` to see all commands 📟
-5. First time you need to setup your terminal to attach to sessions automatically 🖥
-   ![Setup Terminal](./assets/select-term-app.png)
-6. Enjoy Mangaging your sessions 🎉
+4. Open Raycast and type `Manage Tmux` 📟
+5. Set your preferred terminal in the extension preferences page 🖥
+6. Enjoy managing your sessions 🎉
    ![Manage Session](./assets/manage-session.png)
-7. You can create a new session with type `Create New Session` 🆕
+7. Create a new session directly from the `Manage Tmux` actions 🆕
    ![Create Terminal](./assets/create-new-session.png)
 
 ## TODO

@@ -1,15 +1,14 @@
-import { Action, ActionPanel, Icon, launchCommand, LaunchType, List, useNavigation } from "@raycast/api";
+import { Action, ActionPanel, Color, Icon, List, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
-import { RenameTmux } from "./RenameTmux";
-import { deleteSession, getAllSession, switchToSession } from "./utils/sessionUtils";
-import { checkTerminalSetup } from "./utils/terminalUtils";
+import { deleteSession, getAllSession, renameSession, switchToSession, type TmuxSession } from "./utils/sessionUtils";
+import CreateNewTmuxSession from "./create_new_session";
+import SessionWindowsList from "./manage_tmux_windows";
 
 export default function Command() {
-  const [sessions, setSessions] = useState<Array<string>>([]);
+  const [sessions, setSessions] = useState<Array<TmuxSession>>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isTerminalSetup, setIsTerminalSetup] = useState(false);
-
-  const { push } = useNavigation();
+  const [searchText, setSearchText] = useState("");
+  const [renamingSessionName, setRenamingSessionName] = useState<string | null>(null);
 
   const setupListSesssions = () => {
     getAllSession((error, stdout) => {
@@ -22,7 +21,14 @@ export default function Command() {
       const lines = stdout.trim().split("\n");
 
       if (lines?.length > 0) {
-        setSessions(lines);
+        const parsedSessions = lines
+          .filter(Boolean)
+          .map((name) => ({ name, windowsCount: 0, isAttached: false }) satisfies TmuxSession)
+          .sort((left, right) => left.name.localeCompare(right.name));
+
+        setSessions(parsedSessions);
+      } else {
+        setSessions([]);
       }
 
       setIsLoading(false);
@@ -30,77 +36,125 @@ export default function Command() {
   };
 
   useEffect(() => {
-    (async () => {
-      setIsLoading(true);
-
-      const isSetup = await checkTerminalSetup(setIsTerminalSetup);
-
-      if (!isSetup) {
-        setIsLoading(false);
-        return;
-      }
-    })();
+    setIsLoading(true);
+    setupListSesssions();
   }, []);
 
-  useEffect(() => {
-    if (!isTerminalSetup) {
+  const startRenameSession = (sessionName: string) => {
+    setRenamingSessionName(sessionName);
+    setSearchText(sessionName);
+  };
+
+  const cancelRenameSession = () => {
+    setRenamingSessionName(null);
+    setSearchText("");
+  };
+
+  const submitRenameSession = async () => {
+    if (!renamingSessionName) {
       return;
     }
 
-    // List down all tmux session
-    setIsLoading(true);
-    setupListSesssions();
-  }, [isTerminalSetup]);
+    const renamedSession = searchText.trim();
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Renaming session" });
 
-  useEffect(() => {
-    if (!isTerminalSetup && !isLoading) {
-      launchCommand({
-        type: LaunchType.UserInitiated,
-        name: "choose_terminal_app",
-        extensionName: "tmux-sessioner",
-        ownerOrAuthorName: "louishuyng",
-        context: { launcherCommand: "index" },
-      });
+    if (!renamedSession) {
+      toast.style = Toast.Style.Failure;
+      toast.title = "Session name is required";
+      return;
     }
-  }, [isTerminalSetup, isLoading]);
+
+    if (renamedSession === renamingSessionName) {
+      toast.style = Toast.Style.Failure;
+      toast.title = "Session name is unchanged";
+      return;
+    }
+
+    if (sessions.some((session) => session.name === renamedSession && session.name !== renamingSessionName)) {
+      toast.style = Toast.Style.Failure;
+      toast.title = "Session name already exists";
+      return;
+    }
+
+    setIsLoading(true);
+
+    renameSession(renamingSessionName, renamedSession, (error, _stdout, stderr) => {
+      setIsLoading(false);
+
+      if (error || stderr) {
+        console.error(`exec error: ${error || stderr}`);
+        toast.style = Toast.Style.Failure;
+        toast.title = "Failed to rename session";
+        toast.message = error ? error.message : stderr;
+        return;
+      }
+
+      toast.style = Toast.Style.Success;
+      toast.title = `Renamed session to ${renamedSession}`;
+      cancelRenameSession();
+      setupListSesssions();
+    });
+  };
+
+  const renamingSession = renamingSessionName ? sessions.find((session) => session.name === renamingSessionName) : undefined;
 
   return (
-    <>
-      <List isLoading={isLoading}>
-        {sessions.map((session, index) => (
+    <List
+      isLoading={isLoading}
+      filtering={renamingSession ? false : true}
+      searchBarPlaceholder={renamingSession ? "Type the new session name" : "Search sessions by name, state, or window count"}
+      searchText={searchText}
+      onSearchTextChange={setSearchText}
+      selectedItemId={renamingSession?.name}
+    >
+      {renamingSession ? (
+        <List.Item
+          id={renamingSession.name}
+          icon={Icon.Pencil}
+          title={searchText || renamingSession.name}
+          subtitle={`Current name: ${renamingSession.name}`}
+          accessories={[{ text: { value: "editing", color: Color.Yellow } }]}
+          actions={
+            <ActionPanel>
+              <Action title="Save Session Rename" onAction={submitRenameSession} />
+              <Action title="Cancel Rename" onAction={cancelRenameSession} />
+            </ActionPanel>
+          }
+        />
+      ) : (
+        sessions.map((session) => (
           <List.Item
-            key={index}
+            key={session.name}
+            id={session.name}
             icon={Icon.Terminal}
-            title={session}
+            keywords={[session.name]}
+            title={session.name}
+            accessories={[{ text: { value: "session", color: Color.SecondaryText } }]}
             actions={
               <ActionPanel>
-                <Action title="Switch to Selected Session" onAction={() => switchToSession(session, setIsLoading)} />
+                <Action title="Open Selected Session" onAction={() => switchToSession(session.name, setIsLoading)} />
+                <Action.Push title="Browse Session Windows" target={<SessionWindowsList sessionName={session.name} />} />
+                <Action.Push title="Create New Session" target={<CreateNewTmuxSession />} />
+                <Action title="Refresh Sessions" onAction={setupListSesssions} shortcut={{ modifiers: ["cmd"], key: "r" }} />
                 <Action
                   title="Rename This Session"
-                  onAction={() => {
-                    push(
-                      <RenameTmux
-                        sessionName={session}
-                        windowName=""
-                        type="Session"
-                        callback={() => setupListSesssions()}
-                      />,
-                    );
-                  }}
+                  onAction={() => startRenameSession(session.name)}
                   shortcut={{ modifiers: ["cmd", "opt"], key: "r" }}
                 />
                 <Action
                   title="Delete This Session"
                   onAction={() =>
-                    deleteSession(session, setIsLoading, () => setSessions(sessions.filter((s) => s !== session)))
+                    deleteSession(session.name, setIsLoading, () =>
+                      setSessions((currentSessions) => currentSessions.filter((currentSession) => currentSession.name !== session.name)),
+                    )
                   }
                   shortcut={{ modifiers: ["cmd", "opt"], key: "x" }}
                 />
               </ActionPanel>
             }
           />
-        ))}
-      </List>
-    </>
+        ))
+      )}
+    </List>
   );
 }

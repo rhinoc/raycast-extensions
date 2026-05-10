@@ -1,19 +1,20 @@
-import { Action, ActionPanel, Color, Icon, launchCommand, LaunchType, List, useNavigation } from "@raycast/api";
+import { Action, ActionPanel, Color, Icon, List, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
-import { checkTerminalSetup } from "./utils/terminalUtils";
-import { deleteWindow, getAllWindow, switchToWindow, type TmuxWindow } from "./utils/windowUtils";
-import { RenameTmux } from "./RenameTmux";
+import { deleteWindow, getSessionWindows, renameWindow, switchToWindow, type TmuxWindow } from "./utils/windowUtils";
 
-export default function ManageTmuxWindows() {
+function toNumber(value: string | undefined, fallback = 0): number {
+  const parsedValue = Number.parseInt(value || "", 10);
+  return Number.isFinite(parsedValue) ? parsedValue : fallback;
+}
+
+export default function SessionWindowsList({ sessionName }: { sessionName: string }) {
   const [windows, setWindows] = useState<Array<TmuxWindow & { keyIndex: number }>>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isTerminalSetup, setIsTerminalSetup] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [renamingWindowIndex, setRenamingWindowIndex] = useState<number | null>(null);
 
-  const { push } = useNavigation();
-
-  // Init list of windows
   const setupListWindows = () => {
-    getAllWindow((error, stdout) => {
+    getSessionWindows(sessionName, (error, stdout) => {
       if (error) {
         console.error(`exec error: ${error}`);
         setIsLoading(false);
@@ -25,106 +26,158 @@ export default function ManageTmuxWindows() {
       if (lines?.length > 0) {
         let keyIndex = 0;
         const windows = lines.map((line) => {
-          const [sessionName, windowName, windowIndex] = line.split(":");
-          keyIndex += 1; // NOTE: using key index for easily delete and remove window outside the original list
+          const [, windowName, windowIndex] = line.split("\t");
+          keyIndex += 1;
           return {
             keyIndex,
             sessionName,
-            windowIndex: Number.parseInt(windowIndex),
+            windowIndex: toNumber(windowIndex),
             windowName,
           };
         });
 
         setWindows(windows);
+      } else {
+        setWindows([]);
       }
 
       setIsLoading(false);
     });
   };
 
-  // Terminal Setup Check
   useEffect(() => {
-    (async () => {
-      setIsLoading(true);
-
-      const isSetup = await checkTerminalSetup(setIsTerminalSetup);
-
-      if (!isSetup) {
-        setIsLoading(false);
-        return;
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!isTerminalSetup) {
-      return;
-    }
-
-    // List down all tmux session
     setIsLoading(true);
     setupListWindows();
-  }, [isTerminalSetup]);
+  }, [sessionName]);
 
-  useEffect(() => {
-    if (isLoading || isTerminalSetup) {
+  const startRenameWindow = (windowIndex: number, windowName: string) => {
+    setRenamingWindowIndex(windowIndex);
+    setSearchText(windowName);
+  };
+
+  const cancelRenameWindow = () => {
+    setRenamingWindowIndex(null);
+    setSearchText("");
+  };
+
+  const submitRenameWindow = async () => {
+    if (renamingWindowIndex === null) {
       return;
     }
-    launchCommand({
-      type: LaunchType.UserInitiated,
-      name: "choose_terminal_app",
-      extensionName: "tmux-sessioner",
-      ownerOrAuthorName: "louishuyng",
-      context: { launcherCommand: "manage_tmux_windows" },
+
+    const window = windows.find((entry) => entry.windowIndex === renamingWindowIndex);
+
+    if (!window) {
+      cancelRenameWindow();
+      return;
+    }
+
+    const renamedWindow = searchText.trim();
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Renaming window" });
+
+    if (!renamedWindow) {
+      toast.style = Toast.Style.Failure;
+      toast.title = "Window name is required";
+      return;
+    }
+
+    if (renamedWindow === window.windowName) {
+      toast.style = Toast.Style.Failure;
+      toast.title = "Window name is unchanged";
+      return;
+    }
+
+    setIsLoading(true);
+
+    renameWindow(sessionName, window.windowIndex, renamedWindow, (error, _stdout, stderr) => {
+      setIsLoading(false);
+
+      if (error || stderr) {
+        console.error(`exec error: ${error || stderr}`);
+        toast.style = Toast.Style.Failure;
+        toast.title = "Failed to rename window";
+        toast.message = error ? error.message : stderr;
+        return;
+      }
+
+      toast.style = Toast.Style.Success;
+      toast.title = `Renamed window to ${renamedWindow}`;
+      cancelRenameWindow();
+      setupListWindows();
     });
-  }, [isTerminalSetup, isLoading]);
+  };
+
+  const renamingWindow = renamingWindowIndex === null ? undefined : windows.find((window) => window.windowIndex === renamingWindowIndex);
 
   return (
-    <List isLoading={isLoading}>
-      {windows.map((window, index) => (
+    <List
+      isLoading={isLoading}
+      navigationTitle={`Windows · ${sessionName}`}
+      filtering={renamingWindow ? false : true}
+      searchBarPlaceholder={renamingWindow ? "Type the new window name" : `Search windows in ${sessionName}`}
+      searchText={searchText}
+      onSearchTextChange={setSearchText}
+      selectedItemId={renamingWindow ? `${renamingWindow.windowIndex}` : undefined}
+    >
+      {renamingWindow ? (
         <List.Item
-          key={index}
-          icon={Icon.Gear}
-          keywords={[window.sessionName, window.windowName]}
-          title={{
-            value: window.windowName,
-            tooltip: `Session: ${window.sessionName} / Window No: ${window.windowIndex}`,
-          }}
+          id={`${renamingWindow.windowIndex}`}
+          key={`${renamingWindow.windowIndex}:${renamingWindow.keyIndex}`}
+          icon={Icon.Pencil}
+          keywords={[renamingWindow.windowName, String(renamingWindow.windowIndex), `:${renamingWindow.windowIndex}`]}
+          title={searchText || renamingWindow.windowName || "(unnamed window)"}
+          subtitle={`Current name: ${renamingWindow.windowName || "(unnamed window)"}`}
           accessories={[
             {
-              text: { value: window.sessionName, color: Color.Green },
+              text: { value: "editing", color: Color.Yellow },
             },
           ]}
           actions={
             <ActionPanel>
-              <Action title="Switch to Selected Window" onAction={() => switchToWindow(window, setIsLoading)} />
-              <Action
-                title="Rename This Window"
-                onAction={() => {
-                  push(
-                    <RenameTmux
-                      sessionName={window.sessionName}
-                      windowName={window.windowName}
-                      type="Window"
-                      callback={() => setupListWindows()}
-                    />,
-                  );
-                }}
-                shortcut={{ modifiers: ["cmd", "opt"], key: "r" }}
-              />
-              <Action
-                title="Delete This Window"
-                onAction={() =>
-                  deleteWindow(window, setIsLoading, () =>
-                    setWindows(windows.filter((w) => w.keyIndex !== window.keyIndex)),
-                  )
-                }
-                shortcut={{ modifiers: ["cmd", "opt"], key: "x" }}
-              />
+              <Action title="Save Window Rename" onAction={submitRenameWindow} />
+              <Action title="Cancel Rename" onAction={cancelRenameWindow} />
             </ActionPanel>
           }
         />
-      ))}
+      ) : (
+        windows.map((window) => (
+          <List.Item
+            id={`${window.windowIndex}`}
+            key={`${window.windowIndex}:${window.keyIndex}`}
+            icon={Icon.Gear}
+            keywords={[window.windowName, String(window.windowIndex), `:${window.windowIndex}`]}
+            title={window.windowName || "(unnamed window)"}
+            subtitle={`window ${window.windowIndex}`}
+            accessories={[
+              {
+                text: `:${window.windowIndex}`,
+              },
+            ]}
+            actions={
+              <ActionPanel>
+                <Action title="Open Selected Window" onAction={() => switchToWindow(window, setIsLoading)} />
+                <Action title="Refresh Windows" onAction={setupListWindows} shortcut={{ modifiers: ["cmd"], key: "r" }} />
+                <Action
+                  title="Rename This Window"
+                  onAction={() => startRenameWindow(window.windowIndex, window.windowName)}
+                  shortcut={{ modifiers: ["cmd", "opt"], key: "r" }}
+                />
+                <Action
+                  title="Delete This Window"
+                  onAction={() =>
+                    deleteWindow(window, setIsLoading, () =>
+                      setWindows((currentWindows) =>
+                        currentWindows.filter((currentWindow) => currentWindow.keyIndex !== window.keyIndex),
+                      ),
+                    )
+                  }
+                  shortcut={{ modifiers: ["cmd", "opt"], key: "x" }}
+                />
+              </ActionPanel>
+            }
+          />
+        ))
+      )}
     </List>
   );
 }

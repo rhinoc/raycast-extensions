@@ -1,7 +1,7 @@
-import { ChildProcess, exec, ExecException, execSync } from "child_process";
+import { ChildProcess, exec, ExecException } from "child_process";
 import { env } from "../config";
 import { showHUD, showToast, Toast } from "@raycast/api";
-import { openTerminal } from "./terminalUtils";
+import { runCommandInTerminal, shellEscape } from "./terminalUtils";
 
 export interface TmuxWindow {
   sessionName: string;
@@ -9,39 +9,45 @@ export interface TmuxWindow {
   windowName: string;
 }
 
-export function getAllWindow(
+export function getSessionWindows(
+  sessionName: string,
   callback: (error: ExecException | null, stdout: string, stderr: string) => void,
 ): ChildProcess {
-  return exec('tmux list-windows -aF "#{session_name}:#{window_name}:#{window_index}"', { env }, callback);
+  return exec(
+    `tmux list-windows -t ${shellEscape(sessionName)} -F '#{session_name}	#{window_name}	#{window_index}'`,
+    { env },
+    callback,
+  );
 }
+
 export async function switchToWindow(window: TmuxWindow, setLoading: (value: boolean) => void) {
   const toast = await showToast({ style: Toast.Style.Animated, title: "" });
   setLoading(true);
   const { sessionName: session, windowIndex, windowName } = window;
 
-  exec(`tmux switch -t ${session}`, { env }, async (error, stdout, stderr) => {
+  exec(`tmux select-window -t ${shellEscape(`${session}:${windowIndex}`)}`, { env }, async (error, stdout, stderr) => {
     if (error || stderr) {
       console.error(`exec error: ${error || stderr}`);
 
       toast.style = Toast.Style.Failure;
-      toast.title = "No tmux client found 😢";
+      toast.title = "Failed to select tmux window 😢";
       toast.message = error ? error.message : stderr;
       setLoading(false);
 
       return;
     }
-    execSync(`tmux select-window -t ${windowIndex}`, { env });
 
     try {
-      await openTerminal();
+      await runCommandInTerminal(`tmux attach-session -t ${shellEscape(session)}`);
 
       toast.style = Toast.Style.Success;
-      toast.title = `Switched to window ${windowName}`;
-      await showHUD(`Switched to window ${windowName}`);
+      toast.title = `Opened window ${windowName}`;
+      await showHUD(`Opened window ${windowName}`);
       setLoading(false);
     } catch (e) {
       toast.style = Toast.Style.Failure;
-      toast.title = "Terminal not supported 😢";
+      toast.title = "Failed to open terminal 😢";
+      toast.message = e instanceof Error ? e.message : String(e);
       setLoading(false);
     }
     return;
@@ -50,18 +56,22 @@ export async function switchToWindow(window: TmuxWindow, setLoading: (value: boo
 
 export function renameWindow(
   sessionName: string,
-  oldWindowName: string,
+  windowIndex: number,
   newWindowName: string,
   callback: (error: ExecException | null, stdout: string, stderr: string) => void,
 ): ChildProcess {
-  return exec(`tmux rename-window -t ${sessionName}:${oldWindowName} ${newWindowName}`, { env }, callback);
+  return exec(
+    `tmux rename-window -t ${shellEscape(`${sessionName}:${windowIndex}`)} ${shellEscape(newWindowName)}`,
+    { env },
+    callback,
+  );
 }
 
 export async function deleteWindow(window: TmuxWindow, setLoading: (value: boolean) => void, callback: () => void) {
   setLoading(true);
   const toast = await showToast({ style: Toast.Style.Animated, title: "" });
 
-  exec(`tmux kill-window -t ${window.sessionName}:${window.windowName}`, { env }, (error, stdout, stderr) => {
+  exec(`tmux kill-window -t ${shellEscape(`${window.sessionName}:${window.windowIndex}`)}`, { env }, (error, stdout, stderr) => {
     if (error || stderr) {
       console.error(`exec error: ${error || stderr}`);
 

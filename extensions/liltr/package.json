@@ -1,0 +1,386 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "liltr",
+  "title": "Liltr",
+  "version": "0.0.0",
+  "description": "Translate text directly inside Raycast with liltr providers",
+  "icon": "liltr-icon.png",
+  "author": "rhinoc",
+  "platforms": [
+    "macOS"
+  ],
+  "categories": [
+    "Productivity",
+    "Developer Tools"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "translate",
+      "title": "Translate",
+      "description": "Type text and translate it directly inside Raycast",
+      "mode": "view"
+    },
+    {
+      "name": "translate-selected-text",
+      "title": "Translate Selection",
+      "description": "Load selected text from the frontmost app and translate it inside Raycast",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "runtimeMode",
+      "title": "Runtime Mode",
+      "description": "Choose whether liltr runs inside Raycast or opens the standalone liltr app.",
+      "type": "dropdown",
+      "required": false,
+      "default": "raycast",
+      "data": [
+        {
+          "title": "Raycast",
+          "value": "raycast"
+        },
+        {
+          "title": "Liltr App",
+          "value": "liltr-app"
+        }
+      ]
+    },
+    {
+      "name": "defaultProvider",
+      "title": "Default Provider",
+      "description": "Translation provider used when a command opens.",
+      "type": "dropdown",
+      "required": false,
+      "default": "niutrans",
+      "data": [
+        {
+          "title": "NiuTrans",
+          "value": "niutrans"
+        },
+        {
+          "title": "Volcengine",
+          "value": "volcengine"
+        },
+        {
+          "title": "Baidu",
+          "value": "baidu"
+        },
+        {
+          "title": "Ali",
+          "value": "ali"
+        },
+        {
+          "title": "Ollama",
+          "value": "ollama"
+        }
+      ]
+    },
+    {
+      "name": "defaultSourceLanguage",
+      "title": "Default Source Language",
+      "description": "Starting source language for translation.",
+      "type": "dropdown",
+      "required": false,
+      "default": "auto",
+      "data": [
+        {
+          "title": "Auto Detect",
+          "value": "auto"
+        },
+        {
+          "title": "🇺🇸 English",
+          "value": "en-US"
+        },
+        {
+          "title": "🇨🇳 简体中文",
+          "value": "zh-CN"
+        },
+        {
+          "title": "🇯🇵 日本語",
+          "value": "ja-JP"
+        },
+        {
+          "title": "🇰🇷 한국어",
+          "value": "ko-KR"
+        },
+        {
+          "title": "🇫🇷 Français",
+          "value": "fr-FR"
+        },
+        {
+          "title": "🇪🇸 Español",
+          "value": "es-ES"
+        },
+        {
+          "title": "🇵🇹 Português",
+          "value": "pt-PT"
+        },
+        {
+          "title": "🇮🇹 Italiano",
+          "value": "it-IT"
+        },
+        {
+          "title": "🇩🇪 Deutsch",
+          "value": "de-DE"
+        },
+        {
+          "title": "🇹🇷 Türkçe",
+          "value": "tr-TR"
+        },
+        {
+          "title": "🇹🇭 ไทย",
+          "value": "th-TH"
+        },
+        {
+          "title": "🇸🇦 العربية",
+          "value": "ar-AE"
+        },
+        {
+          "title": "🇮🇩 Bahasa Indonesia",
+          "value": "id-ID"
+        },
+        {
+          "title": "🇲🇾 Bahasa Melayu",
+          "value": "ms-MY"
+        },
+        {
+          "title": "🇻🇳 Tiếng Việt",
+          "value": "vi-VN"
+        }
+      ]
+    },
+    {
+      "name": "primaryLanguage",
+      "title": "Primary Language",
+      "description": "Preferred target language when liltr needs a default.",
+      "type": "dropdown",
+      "required": false,
+      "default": "zh-CN",
+      "data": [
+        {
+          "title": "🇺🇸 English",
+          "value": "en-US"
+        },
+        {
+          "title": "🇨🇳 简体中文",
+          "value": "zh-CN"
+        },
+        {
+          "title": "🇯🇵 日本語",
+          "value": "ja-JP"
+        },
+        {
+          "title": "🇰🇷 한국어",
+          "value": "ko-KR"
+        },
+        {
+          "title": "🇫🇷 Français",
+          "value": "fr-FR"
+        },
+        {
+          "title": "🇪🇸 Español",
+          "value": "es-ES"
+        },
+        {
+          "title": "🇵🇹 Português",
+          "value": "pt-PT"
+        },
+        {
+          "title": "🇮🇹 Italiano",
+          "value": "it-IT"
+        },
+        {
+          "title": "🇩🇪 Deutsch",
+          "value": "de-DE"
+        },
+        {
+          "title": "🇹🇷 Türkçe",
+          "value": "tr-TR"
+        },
+        {
+          "title": "🇹🇭 ไทย",
+          "value": "th-TH"
+        },
+        {
+          "title": "🇸🇦 العربية",
+          "value": "ar-AE"
+        },
+        {
+          "title": "🇮🇩 Bahasa Indonesia",
+          "value": "id-ID"
+        },
+        {
+          "title": "🇲🇾 Bahasa Melayu",
+          "value": "ms-MY"
+        },
+        {
+          "title": "🇻🇳 Tiếng Việt",
+          "value": "vi-VN"
+        }
+      ]
+    },
+    {
+      "name": "secondaryLanguage",
+      "title": "Secondary Language",
+      "description": "Fallback language used for auto-detect and swap logic.",
+      "type": "dropdown",
+      "required": false,
+      "default": "en-US",
+      "data": [
+        {
+          "title": "🇺🇸 English",
+          "value": "en-US"
+        },
+        {
+          "title": "🇨🇳 简体中文",
+          "value": "zh-CN"
+        },
+        {
+          "title": "🇯🇵 日本語",
+          "value": "ja-JP"
+        },
+        {
+          "title": "🇰🇷 한국어",
+          "value": "ko-KR"
+        },
+        {
+          "title": "🇫🇷 Français",
+          "value": "fr-FR"
+        },
+        {
+          "title": "🇪🇸 Español",
+          "value": "es-ES"
+        },
+        {
+          "title": "🇵🇹 Português",
+          "value": "pt-PT"
+        },
+        {
+          "title": "🇮🇹 Italiano",
+          "value": "it-IT"
+        },
+        {
+          "title": "🇩🇪 Deutsch",
+          "value": "de-DE"
+        },
+        {
+          "title": "🇹🇷 Türkçe",
+          "value": "tr-TR"
+        },
+        {
+          "title": "🇹🇭 ไทย",
+          "value": "th-TH"
+        },
+        {
+          "title": "🇸🇦 العربية",
+          "value": "ar-AE"
+        },
+        {
+          "title": "🇮🇩 Bahasa Indonesia",
+          "value": "id-ID"
+        },
+        {
+          "title": "🇲🇾 Bahasa Melayu",
+          "value": "ms-MY"
+        },
+        {
+          "title": "🇻🇳 Tiếng Việt",
+          "value": "vi-VN"
+        }
+      ]
+    },
+    {
+      "name": "niutransApiKey",
+      "title": "NiuTrans API Key",
+      "description": "API key for NiuTrans.",
+      "type": "password",
+      "required": false
+    },
+    {
+      "name": "baiduAppId",
+      "title": "Baidu App ID",
+      "description": "App ID for Baidu Translate.",
+      "type": "password",
+      "required": false
+    },
+    {
+      "name": "baiduSecretKey",
+      "title": "Baidu Secret Key",
+      "description": "Secret key for Baidu Translate.",
+      "type": "password",
+      "required": false
+    },
+    {
+      "name": "aliAccessKeyId",
+      "title": "Ali Access Key ID",
+      "description": "Access Key ID for Ali Machine Translation.",
+      "type": "password",
+      "required": false
+    },
+    {
+      "name": "aliAccessKeySecret",
+      "title": "Ali Access Key Secret",
+      "description": "Access Key Secret for Ali Machine Translation.",
+      "type": "password",
+      "required": false
+    },
+    {
+      "name": "volcengineAccessKeyId",
+      "title": "Volcengine Access Key ID",
+      "description": "Access Key ID for Volcengine Translate.",
+      "type": "password",
+      "required": false
+    },
+    {
+      "name": "volcengineSecretAccessKey",
+      "title": "Volcengine Secret Access Key",
+      "description": "Secret Access Key for Volcengine Translate.",
+      "type": "password",
+      "required": false
+    },
+    {
+      "name": "ollamaApiUrl",
+      "title": "Ollama API URL",
+      "description": "Chat endpoint used by Ollama.",
+      "type": "textfield",
+      "required": false,
+      "default": "http://localhost:11434/api/chat"
+    },
+    {
+      "name": "ollamaModel",
+      "title": "Ollama Model",
+      "description": "Model name used when the provider is Ollama.",
+      "type": "textfield",
+      "required": false,
+      "default": "qwen2"
+    },
+    {
+      "name": "liltrUrlScheme",
+      "title": "Liltr URL Scheme",
+      "description": "Used when Runtime Mode is set to Liltr App.",
+      "type": "textfield",
+      "required": false,
+      "default": "liltr://translate-in-window"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.103.8"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.0.4",
+    "@types/node": "22.13.10",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}

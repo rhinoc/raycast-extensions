@@ -18,7 +18,7 @@ export default function CreateNewTmuxSession() {
           <Action.SubmitForm
             title="Create New Session"
             onSubmit={async (values) => {
-              const sessionName = values.newSessionName;
+              const sessionName = values.newSessionName?.trim();
               const sessionDirectory = values.newSessionDirectory[0];
               setLoading(true);
 
@@ -32,6 +32,13 @@ export default function CreateNewTmuxSession() {
                 setSessionNameError(errorMessage);
                 toast.style = Toast.Style.Failure;
                 toast.message = errorMessage;
+                setLoading(false);
+                return;
+              }
+
+              if (sessionNameError) {
+                toast.style = Toast.Style.Failure;
+                toast.message = sessionNameError;
                 setLoading(false);
                 return;
               }
@@ -73,7 +80,10 @@ export default function CreateNewTmuxSession() {
         id="newSessionName"
         error={sessionNameError}
         onChange={(value) => {
-          if (!value || value.length === 0) {
+          const trimmedValue = value.trim();
+
+          if (!trimmedValue) {
+            setSessionNameError("");
             return;
           }
 
@@ -85,7 +95,7 @@ export default function CreateNewTmuxSession() {
 
             const lines = stdout.trim().split("\n");
 
-            if (lines.includes(value)) {
+            if (lines.includes(trimmedValue)) {
               setSessionNameError("Session name already exists");
             } else {
               setSessionNameError("");

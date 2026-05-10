@@ -1,12 +1,21 @@
 import { type ChildProcess, exec, type ExecException } from "node:child_process";
 import { env } from "../config";
 import { showHUD, showToast, Toast } from "@raycast/api";
-import { openTerminal } from "./terminalUtils";
+import { runCommandInTerminal, shellEscape } from "./terminalUtils";
 import fs from "node:fs";
+
+export interface TmuxSession {
+  name: string;
+  windowsCount: number;
+  isAttached: boolean;
+  createdAt?: Date;
+  activityAt?: Date;
+}
+
 export function getAllSession(
   callback: (error: ExecException | null, stdout: string, stderr: string) => void,
 ): ChildProcess {
-  return exec(`tmux list-sessions | awk '{print $1}' | sed 's/://'`, { env }, callback);
+  return exec(`tmux list-sessions -F '#{session_name}'`, { env }, callback);
 }
 
 export function directoryExists(directory: string): boolean {
@@ -18,9 +27,11 @@ export function createNewSession(
   sessionDirectory: string,
   callback: (error: ExecException | null, stdout: string, stderr: string) => void,
 ): ChildProcess {
-  const spaceEscapedSessionDirectory = sessionDirectory.replace(" ", "\\ ");
-
-  return exec(`tmux new-session -d -s ${sessionName} -c ${spaceEscapedSessionDirectory}`, { env }, callback);
+  return exec(
+    `tmux new-session -d -s ${shellEscape(sessionName)} -c ${shellEscape(sessionDirectory)}`,
+    { env },
+    callback,
+  );
 }
 
 export function renameSession(
@@ -28,46 +39,39 @@ export function renameSession(
   newSessionName: string,
   callback: (error: ExecException | null, stdout: string, stderr: string) => void,
 ): ChildProcess {
-  return exec(`tmux rename-session -t ${oldSessionName} ${newSessionName}`, { env }, callback);
+  return exec(
+    `tmux rename-session -t ${shellEscape(oldSessionName)} ${shellEscape(newSessionName)}`,
+    { env },
+    callback,
+  );
 }
 
 export async function switchToSession(session: string, setLoading: (value: boolean) => void) {
   const toast = await showToast({ style: Toast.Style.Animated, title: "" });
   setLoading(true);
 
-  exec(`tmux switch -t ${session}`, { env }, async (error, stdout, stderr) => {
-    if (error || stderr) {
-      console.error(`exec error: ${error || stderr}`);
+  try {
+    await runCommandInTerminal(`tmux attach-session -t ${shellEscape(session)}`);
 
-      toast.style = Toast.Style.Failure;
-      toast.title = "No tmux client found 😢";
-      toast.message = error ? error.message : stderr;
-      setLoading(false);
+    toast.style = Toast.Style.Success;
+    toast.title = `Opened session ${session}`;
+    await showHUD(`Opened session ${session}`);
+  } catch (error) {
+    console.error(`exec error: ${error}`);
 
-      return;
-    }
-
-    try {
-      await openTerminal();
-
-      toast.style = Toast.Style.Success;
-      toast.title = `Switched to session ${session}`;
-      await showHUD(`Switched to session ${session}`);
-      setLoading(false);
-    } catch (e) {
-      toast.style = Toast.Style.Failure;
-      toast.title = "Terminal not supported 😢";
-      setLoading(false);
-    }
-    return;
-  });
+    toast.style = Toast.Style.Failure;
+    toast.title = "Failed to open terminal 😢";
+    toast.message = error instanceof Error ? error.message : String(error);
+  } finally {
+    setLoading(false);
+  }
 }
 
 export async function deleteSession(session: string, setLoading: (value: boolean) => void, callback: () => void) {
   setLoading(true);
   const toast = await showToast({ style: Toast.Style.Animated, title: "" });
 
-  exec(`tmux kill-session -t ${session}`, { env }, (error, stdout, stderr) => {
+  exec(`tmux kill-session -t ${shellEscape(session)}`, { env }, (error, stdout, stderr) => {
     if (error || stderr) {
       console.error(`exec error: ${error || stderr}`);
 
